@@ -9,13 +9,18 @@
  * file that was distributed with this source code.
  */
 
-namespace LeagueTest\Uri;
+namespace LeagueTest\Uri\Tests;
 
 use League\Uri\Exception\MalformedUri;
 use League\Uri\UriString;
 use PHPUnit\Framework\TestCase;
 use TypeError;
 
+/**
+ * Class UriStringTest.
+ *
+ * @package LeagueTest\Uri
+ */
 class UriStringTest extends TestCase
 {
     public function testParserFailedWithWrongArgumentType(): void
