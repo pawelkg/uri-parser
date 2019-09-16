@@ -176,18 +176,9 @@ final class UriString
     public static function build(array $components): string
     {
         $result = $components['path'] ?? '';
-        if (isset($components['query'])) {
-            $result .= '?'.$components['query'];
-        }
-
-        if (isset($components['fragment'])) {
-            $result .= '#'.$components['fragment'];
-        }
-
-        $scheme = null;
-        if (isset($components['scheme'])) {
-            $scheme = $components['scheme'].':';
-        }
+        $result .= isset($components['query']) ? '?'.$components['query'] : '';
+        $result .= isset($components['fragment']) ? '#'.$components['fragment'] : '';
+        $scheme = isset($components['scheme']) ? $components['scheme'].':' : null;
 
         if (!isset($components['host'])) {
             return $scheme.$result;
@@ -195,9 +186,7 @@ final class UriString
 
         $scheme .= '//';
         $authority = $components['host'];
-        if (isset($components['port'])) {
-            $authority .= ':'.$components['port'];
-        }
+        $authority .= isset($components['port']) ? ':'.$components['port'] : '';
 
         if (!isset($components['user'])) {
             return $scheme.$authority.$result;
