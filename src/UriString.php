@@ -350,7 +350,6 @@ final class UriString
      * @see https://tools.ietf.org/html/rfc3986#section-3.2.2
      *
      * @throws MalformedUri if the registered name is invalid
-     *
      */
     private static function filterPort(string $port): ?int
     {

@@ -15,6 +15,11 @@ namespace League\Uri\Exception;
 
 use InvalidArgumentException;
 
+/**
+ * Class InvalidUri.
+ *
+ * @package League\Uri\Exception
+ */
 class InvalidUri extends InvalidArgumentException
 {
 }

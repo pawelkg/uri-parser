@@ -13,6 +13,11 @@ declare(strict_types=1);
 
 namespace League\Uri\Exception;
 
+/**
+ * Class MalformedUri.
+ *
+ * @package League\Uri\Exception
+ */
 class MalformedUri extends InvalidUri
 {
 }
