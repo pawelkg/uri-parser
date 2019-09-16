@@ -385,18 +385,23 @@ final class UriString
      *
      * @see http://tools.ietf.org/html/rfc3986#section-3.2.2
      *
-     * @throws MalformedUri if the registered name is invalid
-     * @throws InvalidUri   if IDN support or ICU requirement are not available or met.
+     * @throws MalformedUri             if the registered name is invalid.
+     * @throws InvalidUri               if IDN support or ICU requirement are not available or met.
+     * @throws UnexpectedValueException if the Intl extension is misconfigured.
      */
     private static function filterRegisteredName(string $host): string
     {
-        // @codeCoverageIgnoreStart
-        // added because it is not possible in travis to disabled the ext/intl extension
-        // see travis issue https://github.com/travis-ci/travis-ci/issues/4701
-        static $idn_support = null;
-        $idn_support = $idn_support ?? function_exists('idn_to_ascii') && defined('INTL_IDNA_VARIANT_UTS46');
-        // @codeCoverageIgnoreEnd
+        return self::filterGeneralRegisteredName($host) ?? self::filterIPv4($host);
+    }
 
+    /**
+     * Filter host as general registered name or return null.
+     *
+     * @throws MalformedUri
+     * @throws UnexpectedValueException
+     */
+    private static function filterGeneralRegisteredName(string $host): ?string
+    {
         $formatted_host = rawurldecode($host);
 
         if (1 === preg_match(self::REGEXP_REGISTERED_NAME, $formatted_host)) {
@@ -404,55 +409,62 @@ final class UriString
                 return $host;
             }
 
-            // @codeCoverageIgnoreStart
-            if (!$idn_support) {
-                throw new InvalidUri(sprintf('the host `%s` could not be processed for IDN. Verify that ext/intl is installed for IDN support and that ICU is at least version 4.6.', $host));
-            }
-            // @codeCoverageIgnoreEnd
-
+            self::checkIDNSupport($host);
             $unicode = idn_to_utf8($host, 0, INTL_IDNA_VARIANT_UTS46, $arr);
 
             if (0 !== $arr['errors']) {
                 throw new MalformedUri(sprintf('The host `%s` is invalid : %s', $host, self::getIDNAErrors($arr['errors'])));
             }
 
-            // @codeCoverageIgnoreStart
-            if (false === $unicode) {
-                throw new UnexpectedValueException(sprintf('The Intl extension is misconfigured for %s, please correct this issue before proceeding.', PHP_OS));
-            }
-            // @codeCoverageIgnoreEnd
+            self::throwUnexpectedValueExceptionIfNeeded(false === $unicode);
 
             return $host;
         }
+
+        return null;
+    }
+
+    /**
+     * Filter host os IPv4.
+     *
+     * @throws MalformedUri
+     * @throws UnexpectedValueException
+     */
+    private static function filterIPv4(string $host): string
+    {
+        $formatted_host = rawurldecode($host);
 
         //to test IDN host non-ascii characters must be present in the host
         if (1 !== preg_match(self::REGEXP_IDN_PATTERN, $formatted_host)) {
             throw new MalformedUri(sprintf('Host `%s` is invalid : the host is not a valid registered name.', $host));
         }
 
-        // @codeCoverageIgnoreStart
-        if (!$idn_support) {
-            throw new InvalidUri(sprintf('the host `%s` could not be processed for IDN. Verify that ext/intl is installed for IDN support and that ICU is at least version 4.6.', $host));
-        }
-        // @codeCoverageIgnoreEnd
-
+        self::checkIDNSupport($host);
         $retval = idn_to_ascii($formatted_host, 0, INTL_IDNA_VARIANT_UTS46, $arr);
 
         if (0 !== $arr['errors']) {
             throw new MalformedUri(sprintf('Host `%s` is not a valid IDN host : %s.', $host, self::getIDNAErrors($arr['errors'])));
         }
 
-        // @codeCoverageIgnoreStart
-        if (false === $retval) {
-            throw new UnexpectedValueException(sprintf('The Intl extension is misconfigured for %s, please correct this issue before proceeding.', PHP_OS));
-        }
-        // @codeCoverageIgnoreEnd
+        self::throwUnexpectedValueExceptionIfNeeded(false === $retval);
 
-        if (false !== strpos($retval, '%')) {
+        if (false !== strpos((string) $retval, '%')) {
             throw new MalformedUri(sprintf('Host `%s` is invalid : the host is not a valid registered name.', $host));
         }
 
         return $host;
+    }
+
+    /**
+     * @codeCoverageIgnore
+     *
+     * @throws UnexpectedValueException
+     */
+    private static function throwUnexpectedValueExceptionIfNeeded(bool $retfalse): void
+    {
+        if ($retfalse) {
+            throw new UnexpectedValueException(sprintf('The Intl extension is misconfigured for %s, please correct this issue before proceeding.', PHP_OS));
+        }
     }
 
     /**
@@ -522,5 +534,24 @@ final class UriString
 
         return false !== filter_var($ip_host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)
             && 0 === strpos((string) inet_pton($ip_host), self::ZONE_ID_ADDRESS_BLOCK);
+    }
+
+    /**
+     * Check IDN support.
+     *
+     * @codeCoverageIgnore
+     * added because it is not possible in travis to disabled the ext/intl extension
+     * see travis issue https://github.com/travis-ci/travis-ci/issues/4701
+     *
+     * @throws InvalidUri
+     */
+    private static function checkIDNSupport(string $host): void
+    {
+        static $idn_support = null;
+        $idn_support = $idn_support ?? function_exists('idn_to_ascii') && defined('INTL_IDNA_VARIANT_UTS46');
+
+        if (!$idn_support) {
+            throw new InvalidUri(sprintf('the host `%s` could not be processed for IDN. Verify that ext/intl is installed for IDN support and that ICU is at least version 4.6.', $host));
+        }
     }
 }
