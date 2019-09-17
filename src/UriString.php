@@ -251,6 +251,33 @@ final class UriString
 
         $uri = (string) $uri;
 
+        $components = self::parseSimply($uri);
+
+        if ($components !== null) {
+            return $components;
+        }
+
+        $parts = self::checkSchemePath($uri);
+
+        return array_merge(
+            self::URI_COMPONENTS,
+            '' === $parts['authority'] ? [] : self::parseAuthority($parts['acontent']),
+            [
+                'path' => $parts['path'],
+                'scheme' => '' === $parts['scheme'] ? null : $parts['scontent'],
+                'query' => '' === $parts['query'] ? null : $parts['qcontent'],
+                'fragment' => '' === $parts['fragment'] ? null : $parts['fcontent'],
+            ]
+        );
+    }
+
+    /**
+     * Parse URI when it can be simply parsed.
+     *
+     * @throws MalformedUri
+     */
+    private static function parseSimply(string $uri): ?array
+    {
         if (isset(self::URI_SCHORTCUTS[$uri])) {
             return array_merge(self::URI_COMPONENTS, self::URI_SCHORTCUTS[$uri]);
         }
@@ -259,7 +286,6 @@ final class UriString
             throw new MalformedUri(sprintf('The uri `%s` contains invalid characters.', $uri));
         }
 
-        //if the first character is a known URI delimiter parsing can be simplified
         $first_char = $uri[0];
 
         //The URI is made of the fragment only
@@ -282,6 +308,14 @@ final class UriString
             return $components;
         }
 
+        return null;
+    }
+
+    /**
+     * @throws MalformedUri
+     */
+    private static function checkSchemePath(string $uri): array
+    {
         //use RFC3986 URI regexp to split the URI
         preg_match(self::REGEXP_URI_PARTS, $uri, $parts);
         $parts += ['query' => '', 'fragment' => ''];
@@ -294,16 +328,7 @@ final class UriString
             throw new MalformedUri(sprintf('The uri `%s` contains an invalid path.', $uri));
         }
 
-        return array_merge(
-            self::URI_COMPONENTS,
-            '' === $parts['authority'] ? [] : self::parseAuthority($parts['acontent']),
-            [
-                'path' => $parts['path'],
-                'scheme' => '' === $parts['scheme'] ? null : $parts['scontent'],
-                'query' => '' === $parts['query'] ? null : $parts['qcontent'],
-                'fragment' => '' === $parts['fragment'] ? null : $parts['fcontent'],
-            ]
-        );
+        return $parts;
     }
 
     /**
